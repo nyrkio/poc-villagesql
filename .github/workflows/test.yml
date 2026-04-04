@@ -1,0 +1,38 @@
+name: Remote Pulll, Install and test
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  pull-and-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull villagesql build using Curl and install
+        run: |
+          sudo mkdir -p /var/log/mysql
+          sudo chmod 755 /var/log/mysql
+          sudo chown -R $USER:$USER /var/log/mysql
+          curl -o myscript.sh https://villagesql.com/shell
+          sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' myscript.sh
+          bash -x myscript.sh <<< "2"
+          curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | sudo bash
+          sudo apt -y install sysbench
+          which sysbench 
+          ps -ef |grep mysqld
+          ldd /usr/bin/sysbench
+          MYSQL_PASSWORD=$(grep "Root Password:" "/home/runner/.villagesql/credentials.txt" | cut -d' ' -f3)
+          echo ${MYSQL_PASSWORD}
+          /home/runner/.villagesql/prebuilt/bin/mysql --socket=/home/runner/.villagesql/mysql.sock -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key
+          /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
+          ## Read and Write
+          ls -ltr  /usr/share/sysbench/oltp_read_write.lua
+          #cp /usr/share/sysbench/oltp_read_write.lua oltp_read_write.lua 
+          #sudo chmod 755 /usr/share/sysbench
+          #sudo chown -R $USER:$USER  /usr/share/sysbench
+          #ls -ltr  /usr/share/sysbench/oltp_read_write.lua
+          sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
+          #mv oltp_read_write.lua  /usr/share/sysbench/oltp_read_write.lua 
+          ls -ltr  /usr/share/sysbench/oltp_read_write.lua
+          more /usr/share/sysbench/oltp_read_write.lua
+          /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3   --time=10 --report-interval=1  oltp_read_write run
