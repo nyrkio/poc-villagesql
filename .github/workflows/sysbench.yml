@@ -1,14 +1,25 @@
 jobs:
   run-install:
-    uses: ./.github/workflows/install.yml  # Path to the install file
+    uses: ./.github/workflows/install.yml 
 
   run-tests:
-    needs: pull-and-install
+    needs: run-install  # Fixed: Must match the job ID above
     runs-on: ubuntu-latest
     steps:
-      - name: Run Sysbench Tests
+      - name: Configure Sysbench Hooks
         run: |
-	          sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
-	          /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
-	          sleep 5
-	          /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3   --time=10 --report-interval=1  oltp_read_write run
+          sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
+
+      - name: Prepare Database
+        run: |
+          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
+            --mysql-user='tester2' --mysql-password='.userMDS00' \
+            --tables=3 --table_size=10000 oltp_common prepare
+          sleep 5
+
+      - name: Run Performance Benchmark
+        run: |
+          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
+            --mysql-user='tester2' --mysql-password='.userMDS00' \
+            --tables=3 --table_size=10000 --threads=3 --time=10 \
+            --report-interval=1 oltp_read_write run
