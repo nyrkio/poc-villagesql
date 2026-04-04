@@ -31,19 +31,40 @@ jobs:
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
           sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = final_report_csv' /usr/share/sysbench/oltp_read_write.lua 
           cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
-
+              function report_csv( stat, threads, tm, header )
+                if( header )  then
+                  print( "time,thds,tps,qps,r,w,o,lat95,err/s,reconn/s" )
+                end
+              
+                print( string.format( "%.0f,%u,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f",
+                  stat.time_total, threads,
+                  stat.events / tm, (stat.reads + stat.writes + stat.other) / tm,
+                  stat.reads / tm, stat.writes / tm, stat.other / tm,
+                  stat.latency_pct * 1000, stat.errors / tm, stat.reconnects / tm )
+                )
+              end
+            function inter_report_csv( stat )
+              report_csv( stat, stat.threads_running, stat.time_interval, CSV_header )
+            
+              if( CSV_header )  then
+                CSV_header = false
+              end
+            end
+            
+            
             function final_report_csv( stat )
-            print( "\nFinal report :")
+              print( "\nFinal report :")
               report_csv( stat, sysbench.opt.threads, stat.time_total, true )
             end
-
+            
+            
             if( os.getenv( "SYSBENCH_REPORT_CSV" ) ~= nil )  then
-                CSV_header = true
-                sysbench.hooks.report_intermediate = inter_report_csv
+              CSV_header = true
+              sysbench.hooks.report_intermediate = inter_report_csv
             end
-
+            
             if( os.getenv( "SYSBENCH_FINAL_REPORT_CSV" ) ~= nil )  then
-                sysbench.hooks.report_cumulative = final_report_csv
+              sysbench.hooks.report_cumulative = final_report_csv
             end
           EOF
           more /usr/share/sysbench/oltp_read_write.lua
