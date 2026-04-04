@@ -1,25 +1,39 @@
-jobs:
-  run-install:
-    uses: ./.github/workflows/install.yml 
+name: VillageSQL Performance Benchmark
 
-  run-tests:
-    needs: run-install  # Fixed: Must match the job ID above
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to run it manually for testing
+
+jobs:
+  performance-run:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure Sysbench Hooks
+      - name: Install VillageSQL
         run: |
+          # Download and modify the script to allow automated input
+          curl -fsSL https://villagesql.com/shell -o install.sh
+          sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' install.sh
+          bash -x install.sh <<< "2"
+
+      - name: Setup Sysbench and Hooks
+        run: |
+          sudo apt-get update && sudo apt-get install -y sysbench
+          # Inject the JSON report hook
           sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
 
-      - name: Prepare Database
+      - name: Prepare and Run Benchmark
         run: |
-          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
-            --mysql-user='tester2' --mysql-password='.userMDS00' \
-            --tables=3 --table_size=10000 oltp_common prepare
-          sleep 5
+          # Extract the generated password from the local credentials file
+          MYSQL_PWD=$(grep "Root Password:" ~/.villagesql/credentials.txt | awk '{print $3}')
+          
+          # Use the local binary to ensure compatibility with your Bengaluru setup
+          ~/.villagesql/prebuilt/bin/mysql -u root -p"$MYSQL_PWD" \
+            --socket=/home/runner/.villagesql/mysql.sock \
+            -e "CREATE DATABASE IF NOT EXISTS sysbench;"
 
-      - name: Run Performance Benchmark
-        run: |
-          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
-            --mysql-user='tester2' --mysql-password='.userMDS00' \
+          # Execute the benchmark
+          sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
+            --mysql-user='root' --mysql-password="$MYSQL_PWD" \
             --tables=3 --table_size=10000 --threads=3 --time=10 \
             --report-interval=1 oltp_read_write run
