@@ -18,25 +18,45 @@ jobs:
           curl -fsSL https://villagesql.com/shell -o install.sh
           sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' install.sh
           bash -x install.sh <<< "2"
-
+          # Extract the generated password from the local credentials file
+          MYSQL_PASSWORD=$(grep "Root Password:" "/home/runner/.villagesql/credentials.txt" | cut -d' ' -f3)
+          echo ${MYSQL_PASSWORD}
+          /home/runner/.villagesql/prebuilt/bin/mysql --socket=/home/runner/.villagesql/mysql.sock -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key
+          # Use the local binary to ensure compatibility with your Bengaluru setup
+          /home/runner/.villagesql/prebuilt/bin/mysql -u root -p"$MYSQL_PWD" \
+            --socket=/home/runner/.villagesql/mysql.sock \
+            -e "CREATE DATABASE IF NOT EXISTS sysbench;"
+  
       - name: Setup Sysbench and Hooks
         run: |
           sudo apt-get update && sudo apt-get install -y sysbench
           # Inject the JSON report hook
-          sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
+          #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
+          # 
+          cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
+
+            function final_report_csv( stat )
+            print( "\nFinal report :")
+              report_csv( stat, sysbench.opt.threads, stat.time_total, true )
+            end
+
+            if( os.getenv( "SYSBENCH_REPORT_CSV" ) ~= nil )  then
+                CSV_header = true
+                sysbench.hooks.report_intermediate = inter_report_csv
+            end
+
+            if( os.getenv( "SYSBENCH_FINAL_REPORT_CSV" ) ~= nil )  then
+                sysbench.hooks.report_cumulative = final_report_csv
+            end
+          EOF
 
       - name: Prepare and Run Benchmark
         run: |
-          # Extract the generated password from the local credentials file
-          MYSQL_PWD=$(grep "Root Password:" ~/.villagesql/credentials.txt | awk '{print $3}')
-          
-          # Use the local binary to ensure compatibility with your Bengaluru setup
-          ~/.villagesql/prebuilt/bin/mysql -u root -p"$MYSQL_PWD" \
-            --socket=/home/runner/.villagesql/mysql.sock \
-            -e "CREATE DATABASE IF NOT EXISTS sysbench;"
-
-          # Execute the benchmark
-          sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
+           /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
+           SYSBENCH_FINAL_REPORT_CSV=yes
+           # Execute the benchmark
+           sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench \
             --mysql-user='root' --mysql-password="$MYSQL_PWD" \
             --tables=3 --table_size=10000 --threads=3 --time=10 \
             --report-interval=1 oltp_read_write run
