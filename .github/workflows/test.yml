@@ -7,7 +7,7 @@ jobs:
   pull-and-install:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull villagesql build using Curl and install
+      - name: Run Sysbench Test
         run: |
           sudo mkdir -p /var/log/mysql
           sudo chmod 755 /var/log/mysql
