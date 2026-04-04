@@ -12,6 +12,9 @@ jobs:
           sudo chown -R $USER:$USER /var/log/mysql
           curl -o myscript.sh https://villagesql.com/shell
           sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' myscript.sh
+          MYSQL_PASSWORD=$(grep "Root Password:" "/home/runner/.villagesql/credentials.txt" | cut -d' ' -f3)
+          /home/runner/.villagesql/prebuilt/bin/mysql --socket=/home/runner/.villagesql/mysql.sock -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key
           bash -x myscript.sh <<< "2"
           curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | sudo bash
           sudo apt -y install sysbench
