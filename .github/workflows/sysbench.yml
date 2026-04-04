@@ -12,6 +12,9 @@ jobs:
       - name: Install VillageSQL
         run: |
           # Download and modify the script to allow automated input
+          sudo mkdir -p /var/log/mysql
+          sudo chmod 755 /var/log/mysql
+          sudo chown -R $USER:$USER /var/log/mysql
           curl -fsSL https://villagesql.com/shell -o install.sh
           sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' install.sh
           bash -x install.sh <<< "2"
