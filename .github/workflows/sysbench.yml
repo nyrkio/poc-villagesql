@@ -22,11 +22,7 @@ jobs:
           MYSQL_PASSWORD=$(grep "Root Password:" "/home/runner/.villagesql/credentials.txt" | cut -d' ' -f3)
           echo ${MYSQL_PASSWORD}
           /home/runner/.villagesql/prebuilt/bin/mysql --socket=/home/runner/.villagesql/mysql.sock -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
-          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key
-          # Use the local binary to ensure compatibility with your Bengaluru setup
-          /home/runner/.villagesql/prebuilt/bin/mysql -u root -p"$MYSQL_PWD" \
-            --socket=/home/runner/.villagesql/mysql.sock \
-            -e "CREATE DATABASE IF NOT EXISTS sysbench;"
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key 
   
       - name: Setup Sysbench and Hooks
         run: |
