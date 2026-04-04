@@ -1,0 +1,18 @@
+on:
+  workflow_call: # This makes it "callable" by other workflows
+
+jobs:
+  pull-and-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install VillageSQL and sysbench-lua
+        run: |
+          sudo mkdir -p /var/log/mysql
+          sudo chmod 755 /var/log/mysql
+          sudo chown -R $USER:$USER /var/log/mysql
+          curl -o myscript.sh https://villagesql.com/shell
+          sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' myscript.sh
+          bash -x myscript.sh <<< "2"
+          curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | sudo bash
+          sudo apt -y install sysbench
+          
