@@ -29,7 +29,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y sysbench
           # Inject the JSON report hook
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
-          # 
+          sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = final_report_csv' /usr/share/sysbench/oltp_read_write.lua 
           cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
 
             function final_report_csv( stat )
@@ -53,7 +53,7 @@ jobs:
       - name: Prepare and Run Benchmark
         run: |
            /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
-           SYSBENCH_FINAL_REPORT_CSV=yes
+           export SYSBENCH_FINAL_REPORT_CSV="yes"
            # Execute the benchmark
            more /usr/share/sysbench/oltp_read_write
            /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3   --time=10 --report-interval=1  oltp_read_write run
