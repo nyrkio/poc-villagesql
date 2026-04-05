@@ -36,7 +36,7 @@ jobs:
           more /usr/share/sysbench/oltp_common.lua
           
 
-      - name: Prepare and Run Benchmark
+      - name: Prepare Benchmark
         run: |
           # Prepare dataset
            /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
@@ -44,6 +44,6 @@ jobs:
           
       - name: Run Benchmark
         run: |
-           #export SYSBENCH_FINAL_REPORT_CSV="yes"
+           # export SYSBENCH_FINAL_REPORT_CSV="yes"
            # Execute the benchmark
            /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3 --verbosity=0  --time=10   oltp_read_write run    
