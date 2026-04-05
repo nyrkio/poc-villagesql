@@ -31,7 +31,7 @@ jobs:
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = final_report_csv' /usr/share/sysbench/oltp_read_write.lua 
           sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua 
-          cat << 'EOF' | sudo tee -a oltp_common.lua > /dev/null
+          sudo cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
           	function report_json( stat, threads, tm, header )
           	  if( header )  then
           	    print( "time,thds,tps,qps,r,w,o,lat95,err/s,reconn/s" )
