@@ -31,6 +31,83 @@ jobs:
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = final_report_csv' /usr/share/sysbench/oltp_read_write.lua 
           sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua 
+          cat << 'EOF' | sudo tee -a oltp_common.lua > /dev/null
+          	function report_json( stat, threads, tm, header )
+          	  if( header )  then
+          	    print( "time,thds,tps,qps,r,w,o,lat95,err/s,reconn/s" )
+          	  end
+          
+          	  print( string.format( "%.0f,%u,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f,%4.2f",
+          	    stat.time_total, threads,
+          	    stat.events / tm, (stat.reads + stat.writes + stat.other) / tm,
+          	    stat.reads / tm, stat.writes / tm, stat.other / tm,
+          	    stat.latency_pct * 1000, stat.errors / tm, stat.reconnects / tm )
+          	  )
+          	end
+          
+          	function inter_report_json( stat )
+          	  report_json( stat, stat.threads_running, stat.time_interval, json_header )
+          
+          	  if( json_header )  then
+          	    json_header = false
+          	  end
+          	end
+                    
+          	function final_report_json( stat )
+          	  print( "\nFinal report :")
+          	  report_json( stat, sysbench.opt.threads, stat.time_total, true )
+          	end
+                    
+          	if( os.getenv( "SYSBENCH_REPORT_JSON" ) ~= nil )  then
+          	  json_header = true
+          	  sysbench.hooks.report_intermediate = inter_report_json
+          	end
+          
+          	if( os.getenv( "SYSBENCH_FINAL_REPORT_JSON" ) ~= nil )  then
+          	  sysbench.hooks.report_cumulative = final_report_json
+          	end
+          
+          	-- sysbench.hooks.report_intermediate = sysbench.report_json
+          	function sysbench.report_json(stat, threads, tm, header)
+          	   if not gobj then
+          	      io.write('[\n')
+          	      -- hack to print the closing bracket when the Lua state of the reporting
+          	      -- thread is closed
+          	      gobj = newproxy(true)
+          	      getmetatable(gobj).__gc = function () io.write('\n]\n') end
+          	   else
+          	      io.write(',\n')
+          	   end
+          
+          	   local seconds = stat.time_interval
+          	   io.write(([[
+          	  {
+          	    "time": %4.0f,
+          	    "threads": %u,
+          	    "tps": %4.2f,
+          	    "qps": {
+          	      "total": %4.2f,
+          	      "reads": %4.2f,
+          	      "writes": %4.2f,
+          	      "other": %4.2f
+          	    },
+          	    "latency": %4.2f,
+          	    "errors": %4.2f,
+          	    "reconnects": %4.2f
+          	  }]]):format(
+          		    stat.time_total,
+          		    stat.threads,
+          		    stat.events / tm,
+          		    (stat.reads + stat.writes + stat.other) / tm,
+          		    stat.reads / tm,
+          		    stat.writes / tm,
+          		    stat.other / tm,
+          		    stat.latency_pct * 1000,
+          		    stat.errors / tm,
+          		    stat.reconnects / tm
+          	   ))
+          	end
+          EOF
           
           more /usr/share/sysbench/oltp_read_write.lua
           more /usr/share/sysbench/oltp_common.lua
@@ -42,6 +119,7 @@ jobs:
            /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000   oltp_common prepare
            more /usr/share/sysbench/oltp_read_write.lua
           # export SYSBENCH_FINAL_REPORT_CSV="yes"
+          export SYSBENCH_REPORT_JSON="yes"
       - name: Run Benchmark
         run: |
             /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3 --verbosity=0  --time=10   oltp_read_write run    
