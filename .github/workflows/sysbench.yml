@@ -38,8 +38,8 @@ jobs:
 
       - name: Prepare and Run Benchmark
         run: |
-           /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3   --table_size=10000  --verbosity=0  oltp_common prepare
+           /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=3  --verbosity=0  --table_size=10000   oltp_common prepare
            #export SYSBENCH_FINAL_REPORT_CSV="yes"
            # Execute the benchmark
            more /usr/share/sysbench/oltp_read_write
-           /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3   --time=10 --verbosity=0  oltp_read_write run
+           /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3 --verbosity=0  --time=10   oltp_read_write run
