@@ -7,7 +7,7 @@ on:
 
 jobs:
   perf-norkio:
-    runs-on: nyrkio_4
+    runs-on:  ubuntu-latest
     steps:
       - name: Install VillageSQL
         run: |
