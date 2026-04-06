@@ -1,4 +1,4 @@
-name: VillageSQL Performance Benchmark
+name: Norkio VillageSQL Performance Benchmark
 
 on:
   push:
