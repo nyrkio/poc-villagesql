@@ -15,8 +15,8 @@ jobs:
                  libtirpc-dev rpcsvc-proto build-essential zlib1g-dev
           git clone --depth 1 https://github.com/villagesql/villagesql-server.git
           cd villagesql-server
-          ls -ltr 
-          mkdir build
+          mkdir  build
+          cd build
           cmake ../villagesql-server -DWITH_SSL=system
           make -j $(($(getconf _NPROCESSORS_ONLN) - 2))
           
