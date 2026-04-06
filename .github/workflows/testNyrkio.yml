@@ -1,0 +1,14 @@
+name: test nyrkio_4
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to run it manually for testing
+
+jobs:
+  test-nyrkio:
+    runs-on: nyrkio_4
+    steps:
+      - name: Install VillageSQL
+        run: |
+          echo "nyrkio_4"
