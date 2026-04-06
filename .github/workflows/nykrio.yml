@@ -33,17 +33,17 @@ jobs:
           # Start server temporarily to set password
           echo "Setting up root password..."
           "${BUILD_DIR}/bin/mysqld" \
-          --datadir="${DATA_DIR}" \
-          --socket="${INSTALL_BASE}/mysql.sock" \
-          --port=${PORT} \
-          --pid-file="${INSTALL_BASE}/mysql.pid" \
-          --log-error="${INSTALL_BASE}/mysql.log" \
-          --daemonize 2>/dev/null
+           --datadir="${DATA_DIR}" \
+           --socket="${INSTALL_BASE}/mysql.sock" \
+           --port=${PORT} \
+           --pid-file="${INSTALL_BASE}/mysql.pid" \
+           --log-error="${INSTALL_BASE}/mysql.log" \
+           --daemonize 2>/dev/null
 
           # Set root password
-        "${BUILD_DIR}/bin/mysql" --socket="${INSTALL_BASE}/mysql.sock" -u root << EOSQL 2>/dev/null
-        ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}';
-        FLUSH PRIVILEGES;
+          "${BUILD_DIR}/bin/mysql" --socket="${INSTALL_BASE}/mysql.sock" -u root << EOSQL 2>/dev/null
+           ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}';
+           FLUSH PRIVILEGES;
 
           ${BUILD_DIR}/bin/mysql --socket="${INSTALL_BASE}/mysql.sock" -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
           ${BUILD_DIR}/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key 
