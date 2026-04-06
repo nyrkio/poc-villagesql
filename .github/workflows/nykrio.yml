@@ -6,7 +6,7 @@ on:
   workflow_dispatch: # Allows you to run it manually for testing
 
 jobs:
-  performance-villagesql-norkio:
+  perf-norkio:
     runs-on: nyrkio_4
     steps:
       - name: Install VillageSQL
