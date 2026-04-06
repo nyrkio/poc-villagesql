@@ -7,7 +7,7 @@ on:
 
 jobs:
   performance-run:
-    runs-on: ubuntu-latest
+    runs-on: nyrkio_4
     steps:
       - name: Install VillageSQL
         run: |
