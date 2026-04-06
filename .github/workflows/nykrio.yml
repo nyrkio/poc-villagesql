@@ -12,16 +12,16 @@ jobs:
       - name: Install VillageSQL
         run: |
           #6.14.0-1018-aws Ubuntu 24.04 install 
-            sudo apt update && sudo apt install -y \
-            cmake \
-            libssl-dev \
-            libncurses-dev \
-            pkg-config \
-            bison \
-            libtirpc-dev \
-            rpcsvc-proto \
-            build-essential \
-            zlib1g-dev
+            #sudo apt update && sudo apt install -y \
+            #cmake \
+            # libssl-dev \
+            # libncurses-dev \
+            # pkg-config \
+            # bison \
+            # libtirpc-dev \
+            # rpcsvc-proto \
+            #build-essential \
+            #zlib1g-dev
           # Clone or update repository
           if [ -d "${REPO_DIR}/.git" ]; then
               IS_UPDATE=true
