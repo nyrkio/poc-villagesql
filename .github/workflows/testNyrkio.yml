@@ -12,3 +12,5 @@ jobs:
       - name: Install VillageSQL
         run: |
           echo "nyrkio_4"
+          uname -r
+          
