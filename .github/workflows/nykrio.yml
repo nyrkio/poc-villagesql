@@ -38,10 +38,7 @@ jobs:
           echo "build dir `pwd` "
           cmake ${REPO_DIR} -DWITH_SSL=system
           make -j $(($(getconf _NPROCESSORS_ONLN) - 2))
- jobs:
-  perf-norkio:
-    runs-on:  nyrkio_16
-    steps:
+
       - name: Install VillageSQL
         run: |         
           sudo mkdir -p /var/log/mysql
