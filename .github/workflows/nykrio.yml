@@ -60,7 +60,7 @@ jobs:
           "${BUILD_DIR}/bin/mysqld" \
            --datadir="${DATA_DIR}" \
            --socket="${INSTALL_BASE}/mysql.sock" \
-           --port=${PORT} \
+           --port=3306 \
            --pid-file="${INSTALL_BASE}/mysql.pid" \
            --log-error="${INSTALL_BASE}/mysql.log" \
            --daemonize 2>/dev/null
