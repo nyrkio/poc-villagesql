@@ -1,0 +1,27 @@
+name: Send Result
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to run it manually for testing
+jobs:
+  send-result:
+    runs-on: nyrkio_4
+    steps:
+      - name: send result
+        run: |
+          export TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWNlNTk5YjIzMjgyOGM0OTk0MWY2MmYiLCJhdWQiOlsiZmFzdGFwaS11c2VyczphdXRoIl19.0jreMwY1vY7gptLKL5AwvthPV3cVYvzALVaSxsNHZ_w
+          export TEST_NAME=amroo-trial
+
+          curl -X POST -H "Content-type: application/json" -H "Authorization: Bearer $TOKEN" https://nyrkio.com/api/v0/result/$TEST_NAME \
+           -d '[{"timestamp": 1706220908,
+             "metrics": [
+               {"name": "p50", "unit": "us", "value": 56, "direction": "lower_is_better" },
+               {"name": "p90", "unit": "us", "value": 125, "direction": "lower_is_better"  },
+               {"name": "p99", "unit": "us", "value": 280, "direction": "lower_is_better"  }
+             ],
+             "attributes": {
+               "git_repo": "https://github.com/nyrkio/nyrkio",
+               "branch": "main",
+               "git_commit": "6995e2de6891c724bfeb2db33d7b87775f913ad1"
+             }
+           }]'
