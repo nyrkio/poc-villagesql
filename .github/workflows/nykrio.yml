@@ -12,16 +12,19 @@ jobs:
       - name: Install VillageSQL
         run: |
           #6.14.0-1018-aws Ubuntu 24.04 install 
-            #sudo apt update && sudo apt install -y \
-            #cmake \
-            #libssl-dev \
-            #libncurses-dev \
-            #pkg-config \
-            #bison \
-            #libtirpc-dev \
-            #rpcsvc-proto \
-            #build-essential \
-            #zlib1g-dev
+           # Define your required packages for MySQL/Performance builds
+           PACKAGES=("cmake" "libssl-dev" "libncurses-dev" "pkg-config" "bison" "libtirpc-dev"  "rpcsvc-proto"  "build-essential"  "zlib1g-dev")
+           # Update the local package index first
+           sudo apt update
+          
+          for pkg in "${PACKAGES[@]}"; do
+              if dpkg -l | grep -q "^ii  $pkg "; then
+                  echo "[SKIP] $pkg is already installed."
+              else
+                  echo "[INSTALLING] $pkg..."
+                  sudo apt install -y "$pkg"
+              fi
+          done
            
           git clone --depth 1 https://github.com/villagesql/villagesql-server.git
           cd villagesql-server
