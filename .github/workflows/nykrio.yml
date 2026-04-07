@@ -9,7 +9,7 @@ jobs:
   perf-norkio:
     runs-on:  nyrkio_16
     steps:
-      - name: Install VillageSQL
+      - name: Pull and Build VillageSQL
         run: |
           #6.14.0-1018-aws Ubuntu 24.04 install 
            # Define your required packages for MySQL/Performance builds
@@ -38,12 +38,19 @@ jobs:
           echo "build dir `pwd` "
           cmake ${REPO_DIR} -DWITH_SSL=system
           make -j $(($(getconf _NPROCESSORS_ONLN) - 2))
-          
+ jobs:
+  perf-norkio:
+    runs-on:  nyrkio_16
+    steps:
+      - name: Install VillageSQL
+        run: |         
+          sudo mkdir -p /var/log/mysql
+          sudo chmod 755 /var/log/mysql
+          sudo chown -R $USER:$USER /var/log/mysql
           BUILD_DIR=$HOME/build/villagesql
           DATA_DIR=$HOME/mysql-data/data
           mkdir -p $HOME/mysql-data/data
           INSTALL_BASE=$HOME
-          
           
           "${BUILD_DIR}/bin/mysqld" --initialize-insecure --datadir="${DATA_DIR}" --basedir="${BUILD_DIR}" 2>&1 | tail -5
           echo "✓ Database initialized"
