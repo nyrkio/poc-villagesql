@@ -35,8 +35,8 @@ jobs:
                           echo "Repository already exists. Updating to ${LATEST_TAG}..."
                           cd "${REPO_DIR}"
                           git clean -fd >/dev/null 2>&1
-                          git fetch --depth 1 origin "${LATEST_TAG}" 2>&1 || { echo "Error: Failed to update repository" }
-                          git checkout -f FETCH_HEAD 2>&1 || { echo "Error: Failed to checkout ${LATEST_TAG}";}
+                          git fetch --depth 1 origin "${LATEST_TAG}" 2>&1 || { echo "Error: Failed to update repository"; }
+                          git checkout -f FETCH_HEAD 2>&1 || { echo "Error: Failed to checkout ${LATEST_TAG}"; }
                       else
                           echo "Cloning VillageSQL repository (${LATEST_TAG})..."
                           git clone --depth 1 --branch "${LATEST_TAG}" https://github.com/villagesql/villagesql-server.git "${REPO_DIR}" 2>&1 || { echo "Error: Failed to clone repository"; }
