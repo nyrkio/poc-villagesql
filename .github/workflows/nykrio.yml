@@ -29,13 +29,14 @@ jobs:
           echo "latest tag=${LATEST_TAG}"
           echo "✓ Repository ready (${LATEST_TAG})"
           echo " repo pwd =`pwd`"
+          REPO_DIR=`pwd`
           mkdir -p $HOME/build/villagesql
           cd $HOME/build/villagesql
           echo "build dir `pwd` "
-          cmake $HOME/villagesql-server -DWITH_SSL=system
+          cmake ${REPO_DIR} -DWITH_SSL=system
           make -j $(($(getconf _NPROCESSORS_ONLN) - 2))
           
-          BUILD_DIR=`pwd`
+          BUILD_DIR=$HOME/build/villagesql
           DATA_DIR=$HOME/mysql-data/data
           mkdir -p $HOME/mysql-data/data
           INSTALL_BASE=$HOME
