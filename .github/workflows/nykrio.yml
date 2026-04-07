@@ -7,7 +7,7 @@ on:
 
 jobs:
   perf-norkio:
-    runs-on:  nyrkio_4
+    runs-on:  nyrkio_16
     steps:
       - name: Install VillageSQL
         run: |
