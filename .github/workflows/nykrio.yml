@@ -13,7 +13,7 @@ jobs:
         run: |
           #6.14.0-1018-aws Ubuntu 24.04 install 
            # Define your required packages for MySQL/Performance builds
-           PACKAGES=("cmake" "libssl-dev" "libncurses-dev" "pkg-config" "bison" "libtirpc-dev"  "rpcsvc-proto"  "build-essential"  "zlib1g-dev")
+           PACKAGES=("cmake" "libssl-dev" "libncurses-dev" "pkg-config" "bison" "libtirpc-dev"  "rpcsvc-proto"  "build-essential"  "zlib1g-dev" "jq")
            # Update the local package index first
            sudo apt update
           
@@ -29,6 +29,9 @@ jobs:
           git clone --depth 1 https://github.com/villagesql/villagesql-server.git
           cd villagesql-server
           LATEST_TAG=$(git tag -l 'nightly.20*' | sort -r | head -n 1)
+          git_commit=$(git rev-parse HEAD)
+          timestamp=$(git show -s --format=%ct)
+
           echo "latest tag=${LATEST_TAG}"
           echo "✓ Repository ready (${LATEST_TAG})"
           echo " repo pwd =`pwd`"
@@ -122,7 +125,6 @@ jobs:
           
                     	
                       function final_report_json( stat )
-                      	  print( "\nFinal report :")
                       	  report_json( stat, sysbench.opt.threads,stat.time_total)
                       	end
                       	
@@ -180,7 +182,6 @@ jobs:
                       
                       
                       function final_report_csv( stat )
-                        print( "\nFinal report :")
                         report_csv( stat, sysbench.opt.threads, stat.time_total, true )
                       end
                       
@@ -216,4 +217,76 @@ jobs:
            export SYSBENCH_FINAL_REPORT_JSON="yes"
            #export SYSBENCH_REPORT_CSV="yes"
            #export SYSBENCH_FINAL_REPORT_CSV="yes"
-           /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3 --verbosity=0  --time=10 --report-interval=1  oltp_read_only run    
+           /usr/bin/sysbench  --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench  --mysql-user='tester2'  --mysql-password='.userMDS00' --tables=3 --table_size=10000 --threads=3 --verbosity=0  --time=10 --report-interval=1  oltp_read_only run >$HOME/sysbench-result.txt
+      - name: Filter sysbench json result
+        run: |
+           RESULT_FILE=$HOME/sysbench-result.txt
+            # Check if file exists before proceeding
+            if [[ ! -f "$RESULT_FILE" ]]; then
+                echo "Error: $RESULT_FILE not found!"
+                exit 1
+            fi
+            
+            # 2. Extract values using jq directly from the file
+            # The -r flag gives us raw values (no quotes)
+            timestamp=$(date +%s)
+            duration=$(jq -r '.[0].time' "$RESULT_FILE")
+            tps=$(jq -r '.[0].tps' "$RESULT_FILE")
+            latency=$(jq -r '.[0].latency' "$RESULT_FILE")
+            threads=$(jq -r '.[0].threads' "$RESULT_FILE")
+            
+            # Extracting from the nested qps object
+            total_qps=$(jq -r '.[0].qps.total' "$RESULT_FILE")
+            reads_qps=$(jq -r '.[0].qps.reads' "$RESULT_FILE")
+            writes_qps=$(jq -r '.[0].qps.writes' "$RESULT_FILE")
+            other_qps=$(jq -r '.[0].qps.other' "$RESULT_FILE")
+            
+            errors=$(jq -r '.[0].errors' "$RESULT_FILE")
+            reconnects=$(jq -r '.[0].reconnects' "$RESULT_FILE")
+            echo "$tps $latency $threads $duration $total_qps $reads_qps $writes_qps $other_qps $errors $reconnects "
+            
+      - name: Post Result to Nyrkio
+        run: |     
+          export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWNlNTk5YjIzMjgyOGM0OTk0MWY2MmYiLCJhdWQiOlsiZmFzdGFwaS11c2VyczphdXRoIl19.0jreMwY1vY7gptLKL5AwvthPV3cVYvzALVaSxsNHZ_w"
+          export TEST_NAME="sysbench-nyrkio-sample"
+
+          # 4. Execute Curl with Here-Doc
+          curl -X POST -H "Content-type: application/json" \
+          -H "Authorization: Bearer $TOKEN" \
+          "https://nyrkio.com/api/v0/result/$TEST_NAME" \
+          -d @- <<EOF
+          [
+            {
+              "timestamp": $timestamp,
+              "metrics": [
+                {
+                  "name": "tps",
+                  "unit": "tps",
+                  "value": $tps,
+                  "direction": "higher_is_better"
+                },
+                {
+                  "name": "p95",
+                  "unit": "latency",
+                  "value": $latency,
+                  "direction": "lower_is_better"
+                }
+              ],
+              "attributes": {
+                "git_repo": "https://github.com/nyrkio/nyrkio",
+                "branch": "main",
+                "git_commit": "$git_commit"
+              },
+              "extra_info": {
+                "duration": "$duration",
+                "threads": "$threads",
+                "total_qps": "$total_qps",
+                "read_qps": "$reads_qps",
+                "writes_qps": "$writes_qps",
+                "other_qps": "$other_qps",
+                "errors": "$errors",
+                "reconnects": "$reconnects"
+              }
+            }
+          ]
+          EOF
