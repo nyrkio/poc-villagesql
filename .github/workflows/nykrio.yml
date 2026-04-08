@@ -244,6 +244,7 @@ jobs:
             errors=$(jq -r '.[0].errors' "$RESULT_FILE")
             reconnects=$(jq -r '.[0].reconnects' "$RESULT_FILE")
             echo "$tps $latency $threads $duration $total_qps $reads_qps $writes_qps $other_qps $errors $reconnects "
+            echo "$git_commit $timestamp"
             
       - name: Post Result to Nyrkio
         run: |     
