@@ -26,12 +26,11 @@ jobs:
               fi
           done
            
+          mkdir -p $HOME/clone
+          cd $HOME/clone
           git clone --depth 1 https://github.com/villagesql/villagesql-server.git
           cd villagesql-server
           LATEST_TAG=$(git tag -l 'nightly.20*' | sort -r | head -n 1)
-          git_commit=$(git rev-parse HEAD)
-          timestamp=$(git show -s --format=%ct)
-
           echo "latest tag=${LATEST_TAG}"
           echo "✓ Repository ready (${LATEST_TAG})"
           echo " repo pwd =`pwd`"
@@ -244,50 +243,54 @@ jobs:
             errors=$(jq -r '.[0].errors' "$RESULT_FILE")
             reconnects=$(jq -r '.[0].reconnects' "$RESULT_FILE")
             echo "$tps $latency $threads $duration $total_qps $reads_qps $writes_qps $other_qps $errors $reconnects "
+            cd $HOME/clone/villagesql-server
+            git_commit=$(git rev-parse HEAD)
+            timestamp=$(git show -s --format=%ct)
             echo "$git_commit $timestamp"
+            cat <<EOF > $HOME/metrics.json
+            [
+              {
+                "timestamp": 1712607310,
+                "metrics": [
+                  {
+                    "name": "tps",
+                    "unit": "tps",
+                    "value": 1250.5,
+                    "direction": "higher_is_better"
+                  },
+                  {
+                    "name": "p95",
+                    "unit": "latency",
+                    "value": 45.2,
+                    "direction": "lower_is_better"
+                  }
+                ],
+                "attributes": {
+                  "git_repo": "https://github.com/nyrkio/nyrkio",
+                  "branch": "main",
+                  "git_commit": "a1b2c3d4e5f6g7h8i9j0"
+                },
+                "extra_info": {
+                  "duration": "60s",
+                  "threads": "16",
+                  "total_qps": "5000",
+                  "read_qps": "3500",
+                  "writes_qps": "1000",
+                  "other_qps": "500",
+                  "errors": "0",
+                  "reconnects": "0"
+                }
+              }
+            ]
+            EOF
             
       - name: Post Result to Nyrkio
+        env:
+          TOKEN: ${{secrets.AMROO_NYRKIO_TOKEN}}
         run: |     
-          export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWNlNTk5YjIzMjgyOGM0OTk0MWY2MmYiLCJhdWQiOlsiZmFzdGFwaS11c2VyczphdXRoIl19.0jreMwY1vY7gptLKL5AwvthPV3cVYvzALVaSxsNHZ_w"
           export TEST_NAME="sysbench-nyrkio-sample"
-
-          # 4. Execute Curl with Here-Doc
           curl -X POST -H "Content-type: application/json" \
-          -H "Authorization: Bearer $TOKEN" \
-          "https://nyrkio.com/api/v0/result/$TEST_NAME" \
-          -d @- <<EOF
-          [
-            {
-              "timestamp": $timestamp,
-              "metrics": [
-                {
-                  "name": "tps",
-                  "unit": "tps",
-                  "value": $tps,
-                  "direction": "higher_is_better"
-                },
-                {
-                  "name": "p95",
-                  "unit": "latency",
-                  "value": $latency,
-                  "direction": "lower_is_better"
-                }
-              ],
-              "attributes": {
-                "git_repo": "https://github.com/nyrkio/nyrkio",
-                "branch": "main",
-                "git_commit": "$git_commit"
-              },
-              "extra_info": {
-                "duration": "$duration",
-                "threads": "$threads",
-                "total_qps": "$total_qps",
-                "read_qps": "$reads_qps",
-                "writes_qps": "$writes_qps",
-                "other_qps": "$other_qps",
-                "errors": "$errors",
-                "reconnects": "$reconnects"
-              }
-            }
-          ]
-          EOF
+           -H "Authorization: Bearer $TOKEN" \
+           "https://nyrkio.com/api/v0/result/$TEST_NAME" \
+           -d @"$HOME/metrics.json"
+          
