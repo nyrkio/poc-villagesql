@@ -32,9 +32,14 @@ jobs:
     steps:
       - name: Cleanup Previous Build
         run: |
-          rm -rf $HOME/clone  $HOME/build/villagesql
-          du -sh $HOME/clone
-          du -sh $HOME/build/villagesql
+          if [ -d "$HOME/clone" ]; then
+            echo "Cleaning up old clone directory..."
+            rm -rf "$HOME/clone"
+          fi
+          if [ -d "$HOME/build/villagesql" ]; then
+            echo "Cleaning up old build directory..."
+            rm -rf "$HOME/build/villagesql"
+          fi
           
       - name: Pull and Build VillageSQL
         run: |
