@@ -1,4 +1,4 @@
-name: Norkio VillageSQL Performance Benchmark
+name: Norkio VillageSQL Performance Benchmark 10 commits
 
 on:
   push:
@@ -151,8 +151,8 @@ jobs:
         run: |
           export SYSBENCH_FINAL_REPORT_JSON="yes"
           #prepare and run
-          /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=8   --table_size=1000000 --threads=16  oltp_common prepare
-          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench --mysql-user='tester2' --mysql-password='.userMDS00' --tables=8   --table_size=1000000 --threads=16 --verbosity=0 --time=300 --report-interval=1 oltp_read_only run > "$HOME/sysbench-result.txt"
+          /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=8   --table_size=10000 --threads=16  oltp_common prepare
+          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench --mysql-user='tester2' --mysql-password='.userMDS00' --tables=8   --table_size=10000 --threads=16 --verbosity=0 --time=300 --report-interval=1 oltp_read_only run > "$HOME/sysbench-result.txt"
             RESULT_FILE=$HOME/sysbench-result.txt
             # Check if file exists before proceeding
             if [[ ! -f "$RESULT_FILE" ]]; then
@@ -205,7 +205,7 @@ jobs:
                 "git_commit": $commit
               },
               "extra_info": {
-                "duration": $dur, "threads": $thr, "total_qps": $tqps, "read_qps": $rqps, "writes_qps": $wqps, "other_qps": $oqps, "errors": $err, "reconnects": $rec
+                "duration": $dur, "threads": $thr, "total_qps": $tqps, "read_qps": $rqps, "writes_qps": $wqps, "other_qps": $oqps, "errors": $err, "reconnects": $rec, "tables":"8","rows":"10000"
               }
             } ]' > $HOME/metrics.json
             cat $HOME/metrics.json
