@@ -80,10 +80,10 @@ jobs:
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_intermediate = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = final_report_csv' /usr/share/sysbench/oltp_read_write.lua 
           #sudo sed -i '/require("oltp_common")/a sysbench.hooks.report_cumulative = sysbench.report_json' /usr/share/sysbench/oltp_read_write.lua 
+          #sudo cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
           sudo cat << 'EOF' | sudo tee -a /usr/share/sysbench/oltp_common.lua > /dev/null
-
           	   function sysbench.inter_report_json(stat)
-          		if not gobj then
+          		 if not gobj then
           			      io.write('[\n')
           			      -- hack to print the closing bracket when the Lua state of the reporting
           			      -- thread is closed
@@ -179,7 +179,6 @@ jobs:
                         end
                       end
                       
-                      
                       function final_report_csv( stat )
                         report_csv( stat, sysbench.opt.threads, stat.time_total, true )
                       end
@@ -199,7 +198,6 @@ jobs:
                       if( os.getenv( "SYSBENCH_FINAL_REPORT_JSON" ) ~= nil )  then
                         sysbench.hooks.report_cumulative = final_report_json
                       end
-          
           EOF
           
 
@@ -228,7 +226,6 @@ jobs:
             
             # 2. Extract values using jq directly from the file
             # The -r flag gives us raw values (no quotes)
-            timestamp=$(date +%s)
             duration=$(jq -r '.[0].time' "$RESULT_FILE")
             tps=$(jq -r '.[0].tps' "$RESULT_FILE")
             latency=$(jq -r '.[0].latency' "$RESULT_FILE")
@@ -247,42 +244,35 @@ jobs:
             git_commit=$(git rev-parse HEAD)
             timestamp=$(git show -s --format=%ct)
             echo "$git_commit $timestamp"
-            cat <<EOF > $HOME/metrics.json
-            [
-              {
-                "timestamp": $timestamp,
-                "metrics": [
-                  {
-                    "name": "tps",
-                    "unit": "tps",
-                    "value": $tps,
-                    "direction": "higher_is_better"
-                  },
-                  {
-                    "name": "p95",
-                    "unit": "latency",
-                    "value": $latency,
-                    "direction": "lower_is_better"
-                  }
-                ],
-                "attributes": {
-                  "git_repo": "https://github.com/nyrkio/nyrkio",
-                  "branch": "main",
-                  "git_commit": "$git_commit"
-                },
-                "extra_info": {
-                  "duration": "$duration",
-                  "threads": "$threads",
-                  "total_qps": "$total_qps",
-                  "read_qps": "$reads_qps",
-                  "writes_qps": "$writes_qps",
-                  "other_qps": "$other_qps",
-                  "errors": "$errors",
-                  "reconnects": "$reconnects"
-                }
+            jq -n \
+            --arg ts "$timestamp" \
+            --arg tps "$tps" \
+            --arg lat "$latency" \
+            --arg commit "$git_commit" \
+            --arg dur "$duration" \
+            --arg thr "$threads" \
+            --arg tqps "$total_qps" \
+            --arg rqps "$reads_qps" \
+            --arg wqps "$writes_qps" \
+            --arg oqps "$other_qps" \
+            --arg err "$errors" \
+            --arg rec "$reconnects" \
+            '[ {
+              "timestamp": ($ts | tonumber),
+              "metrics": [
+                { "name": "tps", "unit": "tps", "value": ($tps | tonumber), "direction": "higher_is_better" },
+                { "name": "p95", "unit": "latency", "value": ($lat | tonumber), "direction": "lower_is_better" }
+              ],
+              "attributes": {
+                "git_repo": "https://github.com/nyrkio/nyrkio",
+                "branch": "main",
+                "git_commit": $commit
+              },
+              "extra_info": {
+                "duration": $dur, "threads": $thr, "total_qps": $tqps, "read_qps": $rqps, "writes_qps": $wqps, "other_qps": $oqps, "errors": $err, "reconnects": $rec
               }
-            ]
-            EOF
+            } ]' > $HOME/metrics.json
+            cat $HOME/metrics.json
 
             
       - name: Post Result to Nyrkio
