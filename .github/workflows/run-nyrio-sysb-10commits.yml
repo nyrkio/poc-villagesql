@@ -48,12 +48,11 @@ jobs:
                   sudo apt install -y "$pkg"
               fi
           done
-          mkdir -p $HOME/clone
-          cd $HOME/clone
-          git clone --depth 1 https://github.com/villagesql/villagesql-server.git
-          cd villagesql-server
+          mkdir -p "$HOME/clone"
+          git clone https://github.com/villagesql/villagesql-server.git "$HOME/clone"
+          cd "$HOME/clone"
           git checkout ${{ matrix.commit_sha }}
-          
+          echo "git_repo=`pwd` commit=${{ matrix.commit_sha }}"
           mkdir -p "$HOME/build/villagesql"
           cd "$HOME/build/villagesql"
           cmake "$HOME/clone" -DWITH_SSL=system
@@ -177,7 +176,7 @@ jobs:
             errors=$(jq -r '.[0].errors' "$RESULT_FILE")
             reconnects=$(jq -r '.[0].reconnects' "$RESULT_FILE")
             echo "$tps $latency $threads $duration $total_qps $reads_qps $writes_qps $other_qps $errors $reconnects "
-            cd $HOME/clone/villagesql-server
+            cd $HOME/clone
             git_commit=$( git show -s --format=%H)
             timestamp=$(git show -s --format=%ct)
             echo "$git_commit $timestamp"
