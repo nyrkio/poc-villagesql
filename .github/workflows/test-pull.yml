@@ -1,0 +1,57 @@
+name: Pull 2 commit and build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  get-commits:
+    runs-on: nyrkio_16
+    outputs:
+      commits: ${{ steps.set-matrix.outputs.commits }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: villagesql/villagesql-server
+          fetch-depth: 3
+      - id: set-matrix
+        run: |
+          # Generate the JSON array of SHAs
+          COMMITS_JSON=$(git log -n 10 --format="%H" | jq -R . | jq -s -c .)
+          echo "commits=${COMMITS_JSON}" >> $GITHUB_OUTPUT
+
+  perf-norkio:
+    needs: get-commits
+    runs-on: nyrkio_16
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        commit_sha: ${{ fromJson(needs.get-commits.outputs.commits) }}
+    steps:
+      - name: Cleanup Previous Build
+        run: |
+          rm -rf "$HOME/clone" "$HOME/build/villagesql"
+      - name: Pull and Build VillageSQL
+        run: |
+          PACKAGES=("cmake" "libssl-dev" "libncurses-dev" "pkg-config" "bison" "libtirpc-dev"  "rpcsvc-proto"  "build-essential"  "zlib1g-dev" "jq")
+          # Update the local package index first
+           sudo apt update
+          for pkg in "${PACKAGES[@]}"; do
+              if dpkg -l | grep -q "^ii  $pkg "; then
+                  echo "[SKIP] $pkg is already installed."
+              else
+                  echo "[INSTALLING] $pkg..."
+                  sudo apt install -y "$pkg"
+              fi
+          done
+          mkdir -p "$HOME/clone"
+          git clone https://github.com/villagesql/villagesql-server.git "$HOME/clone"
+          cd "$HOME/clone"
+          git checkout ${{ matrix.commit_sha }}
+          echo "git_repo=`pwd` commit=${{ matrix.commit_sha }}"
+          mkdir -p "$HOME/build/villagesql"
+          cd "$HOME/build/villagesql"
+          cmake "$HOME/clone" -DWITH_SSL=system
+          #make -j $(($(getconf _NPROCESSORS_ONLN) - 2))
