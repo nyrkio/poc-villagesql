@@ -40,6 +40,9 @@ jobs:
             echo "Cleaning up old build directory..."
             rm -rf "$HOME/build/villagesql"
           fi
+          find $HOME -type f -size +500M -exec ls -lh {}
+          sudo du -sh $HOME/* | sort -h
+          sudo rm -rf /tmp/* || true
           
       - name: Pull and Build VillageSQL
         run: |
