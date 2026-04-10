@@ -7,7 +7,7 @@ on:
 
 jobs:
   get-commits:
-    runs-on: nyrkio_16
+    runs-on: nyrkio_16_256GB
     outputs:
       commits: ${{ steps.set-matrix.outputs.commits }}
     steps:
@@ -23,7 +23,7 @@ jobs:
 
   perf-norkio:
     needs: get-commits
-    runs-on: nyrkio_16
+    runs-on: nyrkio_16_256GB
     strategy:
       max-parallel: 1
       fail-fast: false
