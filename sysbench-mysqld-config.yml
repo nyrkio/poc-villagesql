@@ -1,0 +1,154 @@
+name: VillageSQL Performance Benchmark
+
+on:
+  push:
+    branches: [ notmain ]
+  workflow_dispatch: # Allows you to run it manually for testing
+
+jobs:
+  performance-run:
+    runs-on: nyrkio_16
+    steps:
+      - name: Install VillageSQL
+        run: |
+          # Download and modify the script to allow automated input
+          sudo mkdir -p /var/log/mysql
+          sudo chmod 755 /var/log/mysql
+          sudo chown -R $USER:$USER /var/log/mysql
+          curl -fsSL https://villagesql.com/shell -o install.sh
+          sed -i 's/read INSTALL_CHOICE <\/dev\/tty/read INSTALL_CHOICE/' install.sh
+          bash -x install.sh <<< "2"
+          # Extract the generated password from the local credentials file
+          MYSQL_PASSWORD=$(grep "Root Password:" "/home/runner/.villagesql/credentials.txt" | cut -d' ' -f3)
+          echo ${MYSQL_PASSWORD}
+          /home/runner/.villagesql/prebuilt/bin/mysql --socket=/home/runner/.villagesql/mysql.sock -u root -p${MYSQL_PASSWORD} -e "create user 'tester2'@'%' identified WITH caching_sha2_password by '.userMDS00';grant SELECT,INSERT,DELETE,UPDATE,CREATE,DROP,PROCESS,USAGE,INDEX on *.* to 'tester2'@'%' ;alter user 'tester2'@'%' require SSL; create database sysbench;"
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 --get-server-public-key 
+          /home/runner/.villagesql/prebuilt/bin/mysql -utester2 -p'.userMDS00' --port=3306 --host=127.0.0.1 -e "SELECT JSON_OBJECTAGG(variable_name, variable_value) FROM performance_schema.global_variables;" --silent --raw > $HOME/mysqld_config.json
+  
+      # --- LUA HOOK INJECTION ---
+      - name: Setup Sysbench and Hooks
+        run: |
+          sudo apt-get update && sudo apt-get install -y sysbench
+
+          cat << 'LUA_SCRIPT' > /tmp/sysbench_hooks.lua
+          function sysbench.inter_report_json(stat)
+              if not gobj then
+                  io.write('[\n')
+                  gobj = newproxy(true)
+                  getmetatable(gobj).__gc = function () io.write('\n]\n') end
+              else
+                  io.write(',\n')
+              end
+              local seconds = stat.time_interval
+              io.write(([[
+              {
+                "time": %4.0f,
+                "threads": %u,
+                "tps": %4.2f,
+                "qps": {"total": %4.2f, "reads": %4.2f, "writes": %4.2f, "other": %4.2f},
+                "latency": %4.2f, "errors": %4.2f, "reconnects": %4.2f
+              }]]):format(
+                  stat.time_total, stat.threads_running, stat.events / seconds,
+                  (stat.reads + stat.writes + stat.other) / seconds,
+                  stat.reads / seconds, stat.writes / seconds, stat.other / seconds,
+                  stat.latency_pct * 1000, stat.errors / seconds, stat.reconnects / seconds
+              ))
+          end
+
+          function final_report_json(stat)
+              report_json(stat, sysbench.opt.threads, stat.time_total)
+          end
+
+          function report_json(stat, threads, tm)
+              io.write('[\n')
+              io.write(([[
+              {
+                "time": %.0f, "threads": %u, "tps": %4.2f,
+                "qps": {"total": %4.2f, "reads": %4.2f, "writes": %4.2f, "other": %4.2f},
+                "latency": %4.2f, "errors": %4.2f, "reconnects": %4.2f
+              }]]):format(
+                  stat.time_total, threads, stat.events / tm,
+                  (stat.reads + stat.writes + stat.other) / tm,
+                  stat.reads / tm, stat.writes / tm, stat.other / tm,
+                  stat.latency_pct * 1000, stat.errors / tm, stat.reconnects / tm
+              ))
+              io.write('\n]\n')
+          end
+
+          if(os.getenv("SYSBENCH_FINAL_REPORT_JSON") ~= nil) then
+              sysbench.hooks.report_cumulative = final_report_json
+          end
+          LUA_SCRIPT
+          sudo tee -a /usr/share/sysbench/oltp_common.lua < /tmp/sysbench_hooks.lua > /dev/null
+
+      - name: Run and Post Benchmark
+        env:
+          TOKEN: ${{ secrets.AMROO_NYRKIO_TOKEN }}
+        run: |
+          export SYSBENCH_FINAL_REPORT_JSON="yes"
+          #prepare and run
+          /usr/bin/sysbench   --mysql-host='127.0.0.1'   --mysql-port=3306   --mysql-db=sysbench   --mysql-user='tester2'   --mysql-password='.userMDS00'   --tables=8   --table_size=10000 --threads=16  oltp_common prepare
+          /usr/bin/sysbench --mysql-host='127.0.0.1' --mysql-port=3306 --mysql-db=sysbench --mysql-user='tester2' --mysql-password='.userMDS00' --tables=8   --table_size=10000 --threads=16 --verbosity=0 --time=300 --report-interval=1 oltp_read_only run > "$HOME/sysbench-result.txt"
+            RESULT_FILE=$HOME/sysbench-result.txt
+            # Check if file exists before proceeding
+            if [[ ! -f "$RESULT_FILE" ]]; then
+                echo "Error: $RESULT_FILE not found!"
+                exit 1
+            fi
+            
+            # 2. Extract values using jq directly from the file
+            # The -r flag gives us raw values (no quotes)
+            duration=$(jq -r '.[0].time' "$RESULT_FILE")
+            tps=$(jq -r '.[0].tps' "$RESULT_FILE")
+            latency=$(jq -r '.[0].latency' "$RESULT_FILE")
+            threads=$(jq -r '.[0].threads' "$RESULT_FILE")
+            
+            # Extracting from the nested qps object
+            total_qps=$(jq -r '.[0].qps.total' "$RESULT_FILE")
+            reads_qps=$(jq -r '.[0].qps.reads' "$RESULT_FILE")
+            writes_qps=$(jq -r '.[0].qps.writes' "$RESULT_FILE")
+            other_qps=$(jq -r '.[0].qps.other' "$RESULT_FILE")
+            
+            errors=$(jq -r '.[0].errors' "$RESULT_FILE")
+            reconnects=$(jq -r '.[0].reconnects' "$RESULT_FILE")
+            echo "$tps $latency $threads $duration $total_qps $reads_qps $writes_qps $other_qps $errors $reconnects "
+            cd $HOME/clone
+            git_commit=$( git show -s --format=%H)
+            timestamp=$(git show -s --format=%ct)
+            echo "$git_commit $timestamp"
+            jq -n \
+            --slurpfile mysql_cfg "$HOME/mysqld_config.json"
+            --arg ts "$timestamp" \
+            --arg tps "$tps" \
+            --arg lat "$latency" \
+            --arg commit "$git_commit" \
+            --arg dur "$duration" \
+            --arg thr "$threads" \
+            --arg tqps "$total_qps" \
+            --arg rqps "$reads_qps" \
+            --arg wqps "$writes_qps" \
+            --arg oqps "$other_qps" \
+            --arg err "$errors" \
+            --arg rec "$reconnects" \
+            '[ {
+              "timestamp": ($ts | tonumber),
+              "metrics": [
+                { "name": "tps", "unit": "tps", "value": ($tps | tonumber), "direction": "higher_is_better" },
+                { "name": "p95", "unit": "latency", "value": ($lat | tonumber), "direction": "lower_is_better" }
+              ],
+              "attributes": {
+                "git_repo": "https://github.com/nyrkio/villagesql-poc",
+                "branch": "main",
+                "git_commit": $commit
+              },
+              "extra_info": {
+                "duration": $dur, "threads": $thr, "total_qps": $tqps, "read_qps": $rqps, "writes_qps": $wqps, "other_qps": $oqps, "errors": $err, "reconnects": $rec, "tables":"8","rows":"10000","mysql_config": $mysql_cfg[0]
+              }
+            } ]' > $HOME/metrics.json
+            cat $HOME/metrics.json
+            export TEST_NAME="amroo_trial_mysqld_config"
+            curl -X PUT -H "Content-type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://nyrkio.com/api/v0/result/$TEST_NAME" \
+            -d @"$HOME/metrics.json"
+          
