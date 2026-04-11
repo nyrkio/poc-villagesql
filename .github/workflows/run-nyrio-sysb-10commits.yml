@@ -17,9 +17,7 @@ jobs:
           fetch-depth: 200
       - id: set-matrix
         run: |
-          # Generate the JSON array of SHAs
-          #COMMITS_JSON=$(git log -n 30 --format="%H" | jq -R . | jq -s -c .)
-          # Only merge commits
+          echo Using --merges to only list merge commits
           COMMITS_JSON=$(git log --merges -n 30 --format="%H" | jq -R . | jq -s -c .)
           echo "commits=${COMMITS_JSON}"
           echo "commits=${COMMITS_JSON}" >> $GITHUB_OUTPUT
