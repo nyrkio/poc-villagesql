@@ -17,8 +17,7 @@ jobs:
           fetch-depth: 200
       - id: set-matrix
         run: |
-          echo Using --merges to only list merge commits
-          COMMITS_JSON=$(git log --merges -n 30 --format="%H" | jq -R . | jq -s -c .)
+          COMMITS_JSON=$(git log -n 30 --format="%H" | jq -R . | jq -s -c .)
           echo "commits=${COMMITS_JSON}"
           echo "commits=${COMMITS_JSON}" >> $GITHUB_OUTPUT
 
