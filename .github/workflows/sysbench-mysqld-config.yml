@@ -1,4 +1,4 @@
-name: VillageSQL Performance Benchmark
+name: Test VillageSQL Performance Benchmark with added mysqld config
 
 on:
   push:
