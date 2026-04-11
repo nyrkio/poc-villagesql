@@ -216,7 +216,7 @@ jobs:
                 { "name": "p95", "unit": "latency", "value": ($lat | tonumber), "direction": "lower_is_better" }
               ],
               "attributes": {
-                "git_repo": "https://github.com/nyrkio/nyrkio",
+                "git_repo": "https://github.com/amroo76/villagesql-poc",
                 "branch": "main",
                 "git_commit": $commit
               },
@@ -225,7 +225,7 @@ jobs:
               }
             } ]' > $HOME/metrics.json
             cat $HOME/metrics.json
-            export TEST_NAME="sysbench-nyrkio-sample"
+            export TEST_NAME="sysbench/oltp_read_only/threads=16:table_size=8x10000"
             curl -X PUT -H "Content-type: application/json" \
             -H "Authorization: Bearer $TOKEN" \
             "https://nyrkio.com/api/v0/result/$TEST_NAME" \
