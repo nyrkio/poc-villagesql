@@ -28,7 +28,7 @@ jobs:
     needs: get-commits
     runs-on: nyrkio_16_256GB
     strategy:
-      max-parallel: 20
+      max-parallel: 30
       fail-fast: false
       matrix:
         commit_sha: ${{ fromJson(needs.get-commits.outputs.commits) }}
