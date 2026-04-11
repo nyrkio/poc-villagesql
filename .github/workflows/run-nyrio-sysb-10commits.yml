@@ -216,7 +216,7 @@ jobs:
                 { "name": "p95", "unit": "latency", "value": ($lat | tonumber), "direction": "lower_is_better" }
               ],
               "attributes": {
-                "git_repo": "https://github.com/amroo76/villagesql-poc",
+                "git_repo": "https://github.com/nyrkio/villagesql-poc",
                 "branch": "main",
                 "git_commit": $commit
               },
