@@ -2,7 +2,7 @@ name: Norkio VillageSQL Performance Benchmark
 
 on:
   push:
-    branches: [ main ]
+    branches: [ notmain ]
   workflow_dispatch: # Allows you to run it manually for testing
 
 jobs:

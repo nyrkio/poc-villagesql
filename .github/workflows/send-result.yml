@@ -1,7 +1,7 @@
 name: Send Result
 on:
   push:
-    branches: [ main ]
+    branches: [ notmain ]
   workflow_dispatch: # Allows you to run it manually for testing
 jobs:
   send-result:

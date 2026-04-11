@@ -2,7 +2,7 @@ name: Pull 2 commit and build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ notmain ]
   workflow_dispatch:
 
 jobs:
