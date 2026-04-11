@@ -14,13 +14,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: villagesql/villagesql-server
-          fetch-depth: 20
+          fetch-depth: 100
       - id: set-matrix
         run: |
           # Generate the JSON array of SHAs
-          #COMMITS_JSON=$(git log -n 20 --format="%H" | jq -R . | jq -s -c .)
+          #COMMITS_JSON=$(git log -n 30 --format="%H" | jq -R . | jq -s -c .)
           # Only merge commits
-          COMMITS_JSON=$(git log --merges -n 20 --format="%H" | jq -R . | jq -s -c .)
+          COMMITS_JSON=$(git log --merges -n 30 --format="%H" | jq -R . | jq -s -c .)
           echo "commits=${COMMITS_JSON}" >> $GITHUB_OUTPUT
 
   perf-norkio:
